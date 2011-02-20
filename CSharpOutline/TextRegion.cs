@@ -69,9 +69,30 @@ namespace CSharpOutline
         {
             SnapshotSpan span = this.AsSnapshotSpan();
             string hoverText = span.GetText();
+            string[] lines = hoverText.Split(new string[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);// removing first empty line
+            StringBuilder builder = new StringBuilder(hoverText.Length); // allocating a bit larger buffer
+
+            if (lines.Length <= 25)
+            {
+                for (int i = 0; i < lines.Length - 1; i++)
+                {
+                    builder.AppendLine(lines[i]);
+                }
+                builder.Append(lines[lines.Length - 1]);
+            }
+            else
+            { 
+                for (int i = 0; i < 24; i++)
+                {
+                    builder.AppendLine(lines[i]);
+                }
+                builder.Append("...");
+            }
+
             //hoverText = hoverText.Substring(hoverText.IndexOf('{'));
             // TODO: add tabs and space removing for well-formed formatting
-            return new TagSpan<IOutliningRegionTag>(span, new OutliningRegionTag(false, false, GetCollapsedText(), hoverText));
+            return new TagSpan<IOutliningRegionTag>(span, new OutliningRegionTag(false, false, GetCollapsedText(), builder.ToString()));
+            //return new TagSpan<IOutliningRegionTag>(span, new OutliningRegionTag(false, false, GetCollapsedText(), hoverText));
         }
 
         public SnapshotSpan AsSnapshotSpan()
