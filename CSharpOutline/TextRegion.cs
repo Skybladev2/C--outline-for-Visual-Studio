@@ -7,6 +7,8 @@ using Microsoft.VisualStudio.Text.Tagging;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
 using Microsoft.VisualStudio.Text.Classification;
+using System.ComponentModel.Composition;
+using Microsoft.VisualStudio.Text.Editor;
 
 namespace CSharpOutline
 {
@@ -21,6 +23,11 @@ namespace CSharpOutline
         #region Props
         public SnapshotPoint StartPoint { get; set; }
         public SnapshotPoint EndPoint { get; set; }
+
+        /// <summary>
+        /// tagger which created a region
+        /// </summary>
+        public CSharpOutliningTagger Tagger { get; set; }
 
         /// <summary>
         /// whether region has endpoint
@@ -69,28 +76,40 @@ namespace CSharpOutline
         {
             SnapshotSpan span = this.AsSnapshotSpan();
             string hoverText = span.GetText();
-            string[] lines = hoverText.Split(new string[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);// removing first empty line
-            StringBuilder builder = new StringBuilder(hoverText.Length); // allocating a bit larger buffer
+            // removing first empty line
+            string[] lines = hoverText.Split(new string[] { "\r\n" }, StringSplitOptions.None);
 
-            if (lines.Length <= 25)
+            string tabSpaces = new string(' ', Tagger.TabSize);
+
+            int empty = 0;
+            while (empty < lines.Length && string.IsNullOrWhiteSpace(lines[empty]))
+                empty++;
+
+            string[] textLines = new string[Math.Min(lines.Length - empty, 25)];
+            for (int i = 0; i < textLines.Length; i++)
+                textLines[i] = lines[i + empty].Replace("\t", tabSpaces);
+
+            //removing redundant indentation
+            //calculating minimal indentation
+            int minIndent = int.MaxValue;
+            foreach (string s in textLines)
+                minIndent = Math.Min(minIndent, GetIndentation(s));
+
+            // allocating a bit larger buffer
+            StringBuilder builder = new StringBuilder(hoverText.Length);
+
+            for (int i = 0; i < textLines.Length - 1; i++)
             {
-                for (int i = 0; i < lines.Length - 1; i++)
-                {
-                    builder.AppendLine(lines[i]);
-                }
-                builder.Append(lines[lines.Length - 1]);
-            }
-            else
-            { 
-                for (int i = 0; i < 24; i++)
-                {
-                    builder.AppendLine(lines[i]);
-                }
-                builder.Append("...");
+                // unindenting every line
+                builder.AppendLine(textLines[i].Length > minIndent ? textLines[i].Substring(minIndent) : "");
             }
 
-            //hoverText = hoverText.Substring(hoverText.IndexOf('{'));
-            // TODO: add tabs and space removing for well-formed formatting
+            // using Append() instead of AppendLine() to prevent extra newline
+            if (textLines.Length == lines.Length - empty)
+                builder.Append(textLines[textLines.Length - 1].Length > minIndent ? textLines[textLines.Length - 1].Substring(minIndent) : "");
+            else
+                builder.Append("...");
+
             return new TagSpan<IOutliningRegionTag>(span, new OutliningRegionTag(false, false, GetCollapsedText(), builder.ToString()));
             //return new TagSpan<IOutliningRegionTag>(span, new OutliningRegionTag(false, false, GetCollapsedText(), hoverText));
         }
@@ -233,6 +252,21 @@ namespace CSharpOutline
                     return;
                 }
             }
+        }
+
+        /// <summary>
+        /// Gets line indent in whitespaces
+        /// </summary>
+        /// <param name="s">String to analyze</param>
+        /// <returns>Count of whitespaces in the beginning of string</returns>
+        private static int GetIndentation(string s)
+        {
+            int i = 0;
+            while (i < s.Length && char.IsWhiteSpace(s[i]))
+                i++;
+            //for lines entirely consisting of whitespace return int.MaxValue
+            //so it won't affect indentation calculation
+            return i == s.Length ? int.MaxValue : i;
         }
     }
 }
