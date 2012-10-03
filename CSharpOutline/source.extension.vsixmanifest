@@ -3,7 +3,7 @@
   <Identifier Id="CSharpOutline.Skyblade.3003efc7-c6f4-4da3-952e-32644a07ef0f">
     <Name>C# outline</Name>
     <Author>Skyblade</Author>
-    <Version>1.0.2</Version>
+    <Version>1.0.3</Version>
     <Description xml:space="preserve">Adds all braces {} outlining for C# editor.
 
 Based on JSEnhancements http://visualstudiogallery.msdn.microsoft.com/0696ad60-1c68-4b2a-9646-4b5f4f8f2e06</Description>
